@@ -38,3 +38,7 @@ $RECYCLE.BIN/
 
 # Local environment variables
 .env
+
+# scripts
+scripts/apex/hello.apex
+manifest/package.xml
