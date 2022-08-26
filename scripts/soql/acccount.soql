@@ -1,6 +1,5 @@
-// Use .soql files to store SOQL queries.
-// You can execute queries in VS Code by selecting the
-//     query text and running the command:
-//     SFDX: Execute SOQL Query with Currently Selected Text
+//Proper Aggregate SOQL query to count number of distinct Accounts having BillingState N% & count > 2
+[SELECT BillingState,COUNT_DISTINCT(Name) FROM Account GROUP BY BillingState HAVING COUNT_DISTINCT(Name) > 2 AND BillingState LIKE 'N%']
 
-SELECT Id, Name FROM Account
+//Proper SOSL  query to return all Account & Candidate with Dip from Name fields
+FIND {Dip*} IN Name Fields RETURNING Account(Id,Name WHERE Industry IN ('Consulting','Communications')), Candidate__c(Id,Name,Status__c,Email__c WHERE Status__c='New' AND Email__c='dghosh133@gmail.com')
