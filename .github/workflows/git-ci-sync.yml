@@ -4,7 +4,7 @@ name: PR Validation (Sync)
 # Controls when the action will run. 
 on:
     pull_request:
-        branches: [ developments,release_current ]
+        branches: [ master ]
     # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # Validate the Commit against Ci Org to ensure nothing is conflicting.
@@ -16,6 +16,6 @@ jobs:
     with:
       DEPLOYMENT_ENVIRONMENT: CI
     secrets:
-      SECRET_URL_PATH: ${{secrets.CLOUDK_SECRET_URL}}
+      SECRET_URL_PATH: ${{secrets.TrailHead_CK_ID_SECRET_URL}}
       DOCKER_HUB_UN: ${{secrets.DOCKER_HUB_USERNAME}}
       DOCKER_HUB_PASS: ${{secrets.DOCKER_HUB_PASSWORD}}
