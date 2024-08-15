@@ -1,0 +1,45 @@
+# This is a basic workflow to help you get started with Actions
+name: Deployment
+
+# Controls when the action will run. 
+on:
+    pull_request_review:
+      types: [submitted]
+    workflow_dispatch:
+    # A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # Deploy the components to cloudk2 staging sandbox.
+  deploy-QA:
+    if: ${{ github.event.review.state == 'approved' && github.event.pull_request.base.ref == 'developments' }}
+    # Utilizing the dynamic yml file for reusability
+    uses: ./.github/workflows/validation-workflow.yml
+    with:
+      DEPLOYMENT_ENVIRONMENT: QA
+    secrets:
+      SECRET_URL_PATH: ${{secrets.QA_AUTH_URL}}
+      DOCKER_HUB_UN: ${{secrets.DOCKER_HUB_USERNAME}}
+      DOCKER_HUB_PASS: ${{secrets.DOCKER_HUB_PASSWORD}}
+
+  # Deploy the components to uat staging sandbox.
+  deploy-UAT:
+    if: ${{ github.event.review.state == 'approved' && github.event.pull_request.base.ref == 'developments' }}
+    # Utilizing the dynamic yml file for reusability
+    uses: ./.github/workflows/validation-workflow.yml
+    with:
+      DEPLOYMENT_ENVIRONMENT: UAT
+    secrets:
+      SECRET_URL_PATH: ${{secrets.UAT_SECRET_URL}}
+      DOCKER_HUB_UN: ${{secrets.DOCKER_HUB_USERNAME}}
+      DOCKER_HUB_PASS: ${{secrets.DOCKER_HUB_PASSWORD}}
+      
+  # Deploy the components to production environment
+  deploy-production:
+    if: ${{ github.event.review.state == 'approved' && github.event.pull_request.base.ref == 'release_current' }}
+    # Utilizing the dynamic yml file for reusability
+    uses: ./.github/workflows/validation-workflow.yml
+    with:
+      DEPLOYMENT_ENVIRONMENT: Production
+    secrets:
+      SECRET_URL_PATH: ${{secrets.PRODUCTION_AUTH_URL}}
+      DOCKER_HUB_UN: ${{secrets.DOCKER_HUB_USERNAME}}
+      DOCKER_HUB_PASS: ${{secrets.DOCKER_HUB_PASSWORD}}

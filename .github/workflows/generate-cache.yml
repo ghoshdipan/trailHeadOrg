@@ -1,0 +1,31 @@
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+name: Install Dependencies
+on:
+  # This workflow will be triggered when invoked from actions
+  workflow_dispatch:
+jobs:
+  build-cache:
+    runs-on: ubuntu-latest
+    #Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      # This will load dependencies in case of cache-hit.
+      - name: Caching The Dependencies
+        id: cache-sfdx
+        uses: actions/cache@v3
+        env: 
+          cache-name: sfdx-cache-files
+        with:
+          path: |
+            /usr/local/lib/node_modules/@salesforce
+            /usr/local/bin/sf
+            /home/runner/.local/share/sf
+          key: ${{ runner.os }}-build-${{ env.cache-name }}
+          
+      # This will ensure pipeline execution in case of cache-miss.
+      - name: Validating Dependencies
+        if: ${{ steps.cache-sfdx.outputs.cache-hit != 'true' }}
+        run: chmod +x ./.github/scripts/installdependencies.sh && ./.github/scripts/installdependencies.sh

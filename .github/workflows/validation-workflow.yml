@@ -1,17 +1,12 @@
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
-name: PR Validation (Learn And Share)
+name: PR Validation
 on:
-  # This workflow contains a single job called "deploy"
+  # This workflow will be triggered when invoked from parent workflow
   workflow_call:
-    #specifying the required inputs for this reusable workflow
     inputs:
-      SOURCE_ORG_ALIAS:
+      DEPLOYMENT_ENVIRONMENT:
         required: true
         type: string
-      BASE_BRANCH:
-        required: true
-        type: string
-    #specifying the required secrets for this reusable workflow
     secrets:
       SECRET_URL_PATH:
         required: true
@@ -20,35 +15,46 @@ on:
       DOCKER_HUB_PASS:
         required: true
       PROD_DOMAIN:
-        required: false      
+        required: false
 jobs:
   deploy:
-    name: ${{ inputs.SOURCE_ORG_ALIAS }}
+    name: ${{ inputs.DEPLOYMENT_ENVIRONMENT }}
     runs-on: ubuntu-latest
-
-    #setting some environment variables so that it can be utilized in upcoming shell scripts
+    environment: ${{ inputs.DEPLOYMENT_ENVIRONMENT }}
     env:
       SECRET_URL_PATH: ${{ secrets.SECRET_URL_PATH }}
-      SOURCE_ORG_ALIAS: ${{ inputs.SOURCE_ORG_ALIAS }}
-      BASE_BRANCH: ${{ inputs.BASE_BRANCH }}
-      PRODUCTION_DOMAIN: ${{ secrets.PROD_DOMAIN }}
-      FORCE_SHOW_SPINNER: true
-      #SFDX_REST_DEPLOY: true
-      SKIP_VALIDATION: false
-      SKIP_SFDMU: false
-
-    #passing the docker hub creds to load the dependencies
-    container:
-      image: sounakck/sfdx-cli
-      credentials:
-        username: ${{ secrets.DOCKER_HUB_UN }}
-        password: ${{ secrets.DOCKER_HUB_PASS }}
-
-    #steps represent a sequence of tasks that will be executed as part of the job.
+      SOURCE_ORG_ALIAS: ${{ vars.SOURCE_ORG_ALIAS }}
+      BASE_BRANCH: ${{ vars.BASE_BRANCH }}
+      PRODUCTION_DOMAIN: ${{ vars.PROD_DOMAIN }}
+      SFDX_DISABLE_DNS_CHECK: true
+#     container:
+#       image: ${{ vars.DOCKER_REPO_PATH }}
+#       credentials:
+#         username: ${{ secrets.DOCKER_HUB_UN }}
+#         password: ${{ secrets.DOCKER_HUB_PASS }}
+    #Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        
+      # This will load dependencies in case of cache-hit.
+      - name: Caching The Dependencies
+        id: cache-sfdx
+        uses: actions/cache@v3
+        env: 
+          cache-name: sfdx-cache-files
+        with:
+          path: |
+            /usr/local/lib/node_modules/@salesforce
+            /usr/local/bin/sf
+            /home/runner/.local/share/sf
+          key: ${{ runner.os }}-build-${{ env.cache-name }}
+          
+      # This will ensure pipeline execution in case of cache-miss.
+      - name: Validating Dependencies
+        if: ${{ steps.cache-sfdx.outputs.cache-hit != 'true' }}
+        run: chmod +x ./.github/scripts/installdependencies.sh && ./.github/scripts/installdependencies.sh
 
       # Authenticate The Org and 
       - name: Populate Auth File And Authorize
@@ -58,10 +64,15 @@ jobs:
       # Generate Delta Package
       - name: Generate Delta Packages
         run: chmod +x ./.github/scripts/generatedeltapkg.sh && ./.github/scripts/generatedeltapkg.sh
-      
+        
+      # Generate Test Classes
+      - name: Generate Test Classes
+        run: chmod +x ./.github/scripts/generatetestclass.sh && bash .github/scripts/generatetestclass.sh
+
       # Instantiate PMD Check for the components
       - name: PMD Check
         run: chmod +x ./.github/scripts/scanner.sh && ./.github/scripts/scanner.sh
+        if: ${{ env.SOURCE_ORG_ALIAS == 'CI' }}
       
       # Validate the components against CI Org
       - name: Validate
@@ -72,12 +83,22 @@ jobs:
       - name: Quick Deploy
         run: chmod +x ./.github/scripts/quickdeploy.sh && ./.github/scripts/quickdeploy.sh
         shell: bash
-        if: ${{ env.SOURCE_ORG_ALIAS != 'CIa' && env.SKIP_VALIDATION }}
+        if: ${{ env.SOURCE_ORG_ALIAS != 'CI' }}
       
       # Metadata Components Deploy
       - name: Metadata Migration
         run: chmod +x ./.github/scripts/sfdmu.sh && ./.github/scripts/sfdmu.sh
+        if: ${{ env.SOURCE_ORG_ALIAS != 'CI' }}
 
       # Skuid Pages Deploy
       - name: Deploy skuid pages
         run:  chmod +x ./.github/scripts/skuidpush.sh && ./.github/scripts/skuidpush.sh
+        if: ${{ env.SOURCE_ORG_ALIAS != 'CI' }}
+
+      # Upload Artifacts
+      - name: Publish Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: Build-Report
+          path: pipeline-artifacts

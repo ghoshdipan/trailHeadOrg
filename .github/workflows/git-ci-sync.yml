@@ -1,0 +1,21 @@
+# This is a basic workflow to help you get started with Actions
+name: PR Validation (Sync)
+
+# Controls when the action will run. 
+on:
+    pull_request:
+        branches: [ developments,release_current ]
+    # A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # Validate the Commit against Ci Org to ensure nothing is conflicting.
+  build:
+    name: build
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip_ci_check') }}
+    # Utilizing the dynamic yml file for reusability
+    uses: ./.github/workflows/validation-workflow.yml
+    with:
+      DEPLOYMENT_ENVIRONMENT: CI
+    secrets:
+      SECRET_URL_PATH: ${{secrets.CLOUDK_SECRET_URL}}
+      DOCKER_HUB_UN: ${{secrets.DOCKER_HUB_USERNAME}}
+      DOCKER_HUB_PASS: ${{secrets.DOCKER_HUB_PASSWORD}}
