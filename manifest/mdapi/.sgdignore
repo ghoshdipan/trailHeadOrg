@@ -1,0 +1,4 @@
+## Ignore file for sgd (delta deployments)
+**/audience/*
+**/installedPackage/*
+.github/workflows
